@@ -1,24 +1,18 @@
 import argparse
 import logging
 import os
-import random
-import sys
+import wandb
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchvision.transforms as transforms
-import torchvision.transforms.functional as TF
-from pathlib import Path
 from torch import optim
 from torch.utils.data import DataLoader, random_split
-from tqdm import tqdm
 
-import wandb
-# from evaluate import evaluate
+from pathlib import Path
+from datetime import datetime
+from tqdm import tqdm
 from Unet_pytorch import UNet
-# from unet import U_NET_OSKAR
-# from utils.data_loading import BasicDataset, CarvanaDataset
-# from utils.dice_score import dice_loss
 from ParticleDataset import ParticleDataset
 
 dir_img = Path('./data/imgs/')
@@ -29,25 +23,17 @@ dir_checkpoint = Path('./checkpoints/')
 def train_model(
         model,
         device,
-        epochs: int = 3,
+        epochs: int = 6,
         batch_size: int = 1,
-        learning_rate: float = 1e-4,
+        learning_rate: float = 1e-5,
         val_percent: float = 0.1,
         save_checkpoint: bool = True,
         img_scale: float = 1,
-        amp: bool = False,
-        weight_decay: float = 1e-8,
-        momentum: float = 0.999,
-        gradient_clipping: float = 1.0,
+        amp: bool = True,
 ):
-    # 1. Create dataset
-    # try:
-    #     dataset = CarvanaDataset(dir_img, dir_mask, img_scale)
-    # except (AssertionError, RuntimeError, IndexError):
-    #     dataset = BasicDataset(dir_img, dir_mask, img_scale)
 
-    dataset = ParticleDataset(num_samples=500, image_size=128, particle_range=1, noise_value=0.0, radius_factor=2)
-    #try to increase num_samples later
+    # 1. Create dataset
+    dataset = ParticleDataset(num_samples=1000, image_size=128, particle_range=1, noise_value=0.0, radius_factor=2)
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -82,9 +68,8 @@ def train_model(
     optimizer = optim.Adam(model.parameters(),
                               lr=learning_rate)
     criterion = nn.BCELoss()
-    criterion = nn.CrossEntropyLoss(weight=1)
-    # criterion = nn.MSELoss()
     global_step = 0
+
 
     # 5. Begin training
     for epoch in range(1, epochs + 1):
@@ -173,17 +158,10 @@ def train_model(
                         except:
                             pass
 
-        # if save_checkpoint:
-        #     Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-        #     state_dict = model.state_dict()
-        #     state_dict['mask_values'] = dataset.mask_values
-        #     torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
-        #     logging.info(f'Checkpoint {epoch} saved!')
-
 
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and labels')
-    parser.add_argument('--epochs', '-e', metavar='E', type=int, default=2, help='Number of epochs')
+    parser.add_argument('--epochs', '-e', metavar='E', type=int, default=6, help='Number of epochs')
     parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
     parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=1e-5,
                         help='Learning rate', dest='lr')
@@ -191,8 +169,8 @@ def get_args():
     parser.add_argument('--scale', '-s', type=float, default=1, help='Downscaling factor of the images')
     parser.add_argument('--validation', '-v', dest='val', type=float, default=10.0,
                         help='Percent of the data that is used as validation (0-100)')
-    parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
-    parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
+    parser.add_argument('--amp', action='store_true', default=True, help='Use mixed precision')
+    parser.add_argument('--bilinear', action='store_true', default=True, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=1, help='Number of classes')
 
     return parser.parse_args()
@@ -207,8 +185,6 @@ if __name__ == '__main__':
 
     # n_channels=3 for RGB images, else n_channels=1 for grayscale images
     model = UNet(n_channels=1, n_classes=1, bilinear=args.bilinear)
-    # model = U_NET_OSKAR(n_channels=1, n_classes=1)
-
     model = model.to(memory_format=torch.channels_last)
 
     #uncomment when using UNet
@@ -236,16 +212,6 @@ if __name__ == '__main__':
             amp=args.amp
         )
 
-        # save model
-        import os
-        current_dir = os.getcwd()
-        # get current date and time
-        import datetime
-        now = datetime.datetime.now()
-        now = now.strftime("%Y-%m-%d_%H-%M-%S")
-
-        torch.save(model, current_dir + f'/malte{now}.pth')
-
 
     except torch.cuda.OutOfMemoryError:
         logging.error('Detected OutOfMemoryError! '
@@ -265,12 +231,9 @@ if __name__ == '__main__':
         )
 
         # save model
-        import os
         current_dir = os.getcwd()
         # get current date and time
-        import datetime
         now = datetime.datetime.now()
         now = now.strftime("%Y-%m-%d_%H-%M-%S")
 
-        torch.save(model, current_dir + f'/habibi_1_{now}.pth')
-
+    torch.save(model, current_dir + f'/malte{now}.pth')

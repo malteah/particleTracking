@@ -1,5 +1,5 @@
 import torch
-from ParticleGenerator import generate_particles
+from ParticleGeneratorBrightfield import generate_particles
 
 class ParticleDataset(torch.utils.data.Dataset):
     def __init__(self, image_size, particle_range, noise_value, num_samples, radius_factor):

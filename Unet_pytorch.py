@@ -46,6 +46,14 @@ class Up(nn.Module):
             self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
             self.conv = DoubleConv(in_channels, out_channels)
 
+    
+    def __init__(self, in_channels, out_channels, bilinear=True):
+        super().__init__()
+
+        self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+        self.conv = DoubleConv(in_channels, out_channels)
+
+
     def forward(self, x1, x2):
         x1 = self.up(x1)
         # input is CHW
@@ -54,8 +62,6 @@ class Up(nn.Module):
 
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2])
-        # if you have padding issues, see
-        # https://github.com/milesial/Pytorch-UNet/blob/master/unet/unet_parts.py
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
@@ -92,7 +98,4 @@ class UNet(nn.Module):
         x = self.up2(x, x2)
         x = self.up3(x, x1)
         logits = self.outc(x)
-        return logits
-
-# Create the model
-# model = UNet(n_channels=1, n_classes=1)
+        return torch.sigmoid(logits)

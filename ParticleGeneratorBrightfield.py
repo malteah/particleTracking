@@ -34,10 +34,16 @@ def generate_particles(IMAGE_SIZE: int = 128, PARTICLE_RANGE: int = 8, NOISE_VAL
 
     phadd=dt.Lambda(phase_adder,ph=lambda: np.random.uniform(0,2*np.pi))
 
+
     s0=optics(particle) #Apply the optics to the particle
+
     sample=s0>>phadd #Randomly change the relative phase of scattered light and reference light
 
-    sample=(sample>>dt.Gaussian(sigma=NOISE_VALUE)) #Add noise to the images
+
+    sample = (sample>>dt.Gaussian(sigma=NOISE_VALUE)) #Add noise to the images
+
+    sample = (sample >> dt.NormalizeMinMax(0, 1)) # Normalize each image between 0 and 1.
+
     im = sample.update()()
     positions = im.get_property('position', get_one=False)
     radii = im.get_property('radius', get_one=False)
@@ -50,4 +56,7 @@ def generate_particles(IMAGE_SIZE: int = 128, PARTICLE_RANGE: int = 8, NOISE_VAL
         gauss_blob = np.exp(-((x-positions[i][1])**2+(y-positions[i][0])**2)/(2*(radii[i]*1e8 * RADIUS_FACTOR)**2))
         label += gauss_blob
 
+    #types: deeptrack.image.Image, np.ndarray,list
     return im, label, positions
+
+im,label,positions = generate_particles()

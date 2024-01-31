@@ -1,0 +1,29 @@
+#Create a Virtual Environment:
+python -m venv venv
+
+# Activate the Virtual Environment:
+.\venv\Scripts\activate
+
+# When you're done working on your project, you can deactivate the virtual environment:
+deactivate
+
+
+
+# packages:
+pip install deeptrack
+pip install wandb
+pip install torch torchvision torchaudio
+
+
+
+# to run on GPU:
+    # install nvidia CUDA: 
+        #   https://developer.nvidia.com/cuda-downloads
+    # Add CUDA Bin Directory to PATH via command prompt (admin)
+        #   setx PATH "%PATH%;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\bin"
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+
+
+# if ModuleNotFoundError: No module named 'resource'
+pip uninstall tensorflow_datasets; pip install tensorflow_datasets==4.9.2
