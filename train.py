@@ -1,39 +1,40 @@
 import argparse
 import logging
-import os
 import wandb
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
+
 from torch import optim
 from torch.utils.data import DataLoader, random_split
-
 from pathlib import Path
 from datetime import datetime
 from tqdm import tqdm
-from Unet_pytorch import UNet
+from models import *
 from ParticleDataset import ParticleDataset
+from properties import *
 
 dir_img = Path('./data/imgs/')
 dir_mask = Path('./data/masks/')
 dir_checkpoint = Path('./checkpoints/')
 
-
 def train_model(
         model,
+        loss_function,
         device,
-        epochs: int = 6,
-        batch_size: int = 1,
-        learning_rate: float = 1e-5,
-        val_percent: float = 0.1,
-        save_checkpoint: bool = True,
-        img_scale: float = 1,
-        amp: bool = True,
+        epochs,
+        batch_size,
+        learning_rate,
+        val_percent,
+        num_samples,
+        image_size,
+        particle_range,
+        noise_value,
+        radius_factor,
+        save_checkpoint,
+        amp
 ):
 
     # 1. Create dataset
-    dataset = ParticleDataset(num_samples=1000, image_size=128, particle_range=1, noise_value=0.0, radius_factor=2)
+    dataset = ParticleDataset(num_samples=num_samples, image_size=image_size, particle_range=particle_range, noise_value=noise_value, radius_factor=radius_factor)
 
     # 2. Split into train / validation partitions
     n_val = int(len(dataset) * val_percent)
@@ -41,15 +42,15 @@ def train_model(
     train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     # 3. Create data loaders
-    # loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
-    train_loader = DataLoader(train_set, batch_size=batch_size)
+    # loader_args = dict(Batch_size=Batch_size, num_workers=os.cpu_count(), pin_memory=True)
+    train_loader = DataLoader(train_set, batch_size)
     val_loader = DataLoader(val_set, drop_last=True)
 
     # (Initialize logging)
     experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
     experiment.config.update(
         dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
-             val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
+             val_percent=val_percent, save_checkpoint=save_checkpoint, amp=amp)
     )
 
     logging.info(f'''Starting training:
@@ -60,19 +61,18 @@ def train_model(
         Validation size: {n_val}
         Checkpoints:     {save_checkpoint}
         Device:          {device.type}
-        Images scaling:  {img_scale}
         Mixed Precision: {amp}
     ''')
 
     # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
     optimizer = optim.Adam(model.parameters(),
-                              lr=learning_rate)
-    criterion = nn.BCELoss()
+                              lr=Learning_rate)
+    criterion = loss_function
     global_step = 0
 
 
     # 5. Begin training
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, Epochs + 1):
         model.train()
         epoch_loss = 0
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit='img') as pbar:
@@ -83,7 +83,7 @@ def train_model(
                     f'but loaded images have {image.shape[1]} channels. Please check that ' \
                     'the images are loaded correctly.'
 
-                #send the input to the device
+                #send the input to the Device
                 image = image.to(device=device)
                 label = label.to(device=device)
 
@@ -115,7 +115,7 @@ def train_model(
                 # Evaluation round
 
                 model.eval()
-                division_step = (n_train // (5 * batch_size))
+                division_step = (n_train // (5 * Batch_size))
                 if division_step > 0:
                     if global_step % division_step == 0:
                         histograms = {}
@@ -138,7 +138,7 @@ def train_model(
                                 images = image
                                 true = label
                                 pred = pred
-                        # val_score = evaluate(model, val_loader, device, amp)
+                        # val_score = evaluate(model, val_loader, Device, amp)
                         # scheduler.step(val_score)
 
                         logging.info('Validation score: {}'.format(val_score))
@@ -161,17 +161,16 @@ def train_model(
 
 def get_args():
     parser = argparse.ArgumentParser(description='Train the UNet on images and labels')
-    parser.add_argument('--epochs', '-e', metavar='E', type=int, default=6, help='Number of epochs')
-    parser.add_argument('--batch-size', '-b', dest='batch_size', metavar='B', type=int, default=1, help='Batch size')
-    parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=1e-5,
+    parser.add_argument('--Epochs', '-e', metavar='E', type=int, default=Epochs, help='Number of Epochs')
+    parser.add_argument('--batch-size', '-b', dest='Batch_size', metavar='B', type=int, default=Batch_size, help='Batch size')
+    parser.add_argument('--learning-rate', '-l', metavar='LR', type=float, default=Learning_rate,
                         help='Learning rate', dest='lr')
-    parser.add_argument('--load', '-f', type=str, default=False, help='Load model from a .pth file')
-    parser.add_argument('--scale', '-s', type=float, default=1, help='Downscaling factor of the images')
-    parser.add_argument('--validation', '-v', dest='val', type=float, default=10.0,
+    parser.add_argument('--load', '-f', type=str, default=Load_model, help='Load model from a .pth file')
+    parser.add_argument('--validation', '-v', dest='val', type=float, default=100.0*Val_percent,
                         help='Percent of the data that is used as validation (0-100)')
-    parser.add_argument('--amp', action='store_true', default=True, help='Use mixed precision')
-    parser.add_argument('--bilinear', action='store_true', default=True, help='Use bilinear upsampling')
-    parser.add_argument('--classes', '-c', type=int, default=1, help='Number of classes')
+    parser.add_argument('--amp', action='store_true', default=Amp, help='Use mixed precision')
+    parser.add_argument('--bilinear', action='store_true', default=Bilinear, help='Use bilinear upsampling')
+    parser.add_argument('--classes', '-c', type=int, default=N_classes, help='Number of classes')
 
     return parser.parse_args()
 
@@ -180,11 +179,10 @@ if __name__ == '__main__':
     args = get_args()
 
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logging.info(f'Using device {device}')
+    logging.info(f'Using Device {Device}')
 
     # n_channels=3 for RGB images, else n_channels=1 for grayscale images
-    model = UNet(n_channels=1, n_classes=1, bilinear=args.bilinear)
+    model = Model
     model = model.to(memory_format=torch.channels_last)
 
     #uncomment when using UNet
@@ -194,22 +192,28 @@ if __name__ == '__main__':
                  f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
 
     if args.load:
-        state_dict = torch.load(args.load, map_location=device)
+        state_dict = torch.load(args.load, map_location=Device)
         del state_dict['mask_values']
         model.load_state_dict(state_dict)
-        logging.info(f'Model loaded from {args.load}')
+        logging.info(f'model loaded from {args.load}')
 
-    model.to(device=device)
+    model.to(device=Device)
     try:
         train_model(
-            model=model,
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            learning_rate=args.lr,
-            device=device,
-            img_scale=args.scale,
-            val_percent=args.val / 100,
-            amp=args.amp
+            model,
+            loss_function = Loss_function,
+            device = Device,
+            epochs = Epochs,
+            batch_size = Batch_size,
+            learning_rate = Learning_rate,
+            val_percent = Val_percent,
+            num_samples = Num_samples,
+            image_size = Image_size,
+            particle_range = Particle_range,
+            noise_value= Noise_value,
+            radius_factor = Radius_factor,
+            save_checkpoint = Save_checkpoint,
+            amp = Amp
         )
 
 
@@ -220,20 +224,25 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         model.use_checkpointing()
         train_model(
-            model=model,
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            learning_rate=args.lr,
-            device=device,
-            img_scale=args.scale,
-            val_percent=args.val / 100,
-            amp=args.amp
+            model,
+            loss_function = Loss_function,
+            device = Device,
+            epochs = Epochs,
+            batch_size = Batch_size,
+            learning_rate = Learning_rate,
+            val_percent = Val_percent,
+            num_samples = Num_samples,
+            image_size = Image_size,
+            particle_range = Particle_range,
+            noise_value= Noise_value,
+            radius_factor = Radius_factor,
+            save_checkpoint = Save_checkpoint,
+            amp = Amp
         )
 
-        # save model
-        current_dir = os.getcwd()
-        # get current date and time
-        now = datetime.datetime.now()
-        now = now.strftime("%Y-%m-%d_%H-%M-%S")
 
-    torch.save(model, current_dir + f'/malte{now}.pth')
+    # get current date and time
+    now = datetime.now()
+    now = now.strftime("%Y-%m-%d_%H-%M-%S")
+
+    torch.save(Model, SAVE_PATH + f'/malte{now}.pth')

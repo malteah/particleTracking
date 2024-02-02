@@ -1,5 +1,5 @@
 import torch
-from ParticleGeneratorBrightfield import generate_particles
+from ParticleGenerators import *
 
 class ParticleDataset(torch.utils.data.Dataset):
     def __init__(self, image_size, particle_range, noise_value, num_samples, radius_factor):
@@ -13,7 +13,7 @@ class ParticleDataset(torch.utils.data.Dataset):
         return self.num_samples
 
     def __getitem__(self, idx):
-        image, label, _ = generate_particles(self.image_size, self.particle_range, self.noise_value, self.radius_factor)
+        image, label, _ = brightfield(self.image_size, self.particle_range, self.noise_value, self.radius_factor)
         image = torch.tensor(image).float().permute(2, 0, 1)
         label = torch.tensor(label).unsqueeze(-1).float().permute(2, 0, 1)
         return image, label
