@@ -2,5 +2,5 @@ wandb/
 __pycache__/
 venv/
 
-.pth
-.pt
+*.pth
+*.pt

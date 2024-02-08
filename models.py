@@ -173,3 +173,7 @@ class UNet(nn.Module):
         x = self.up3(x, x1)
         logits = self.outc(x)
         return torch.sigmoid(logits)
+    
+    
+
+    

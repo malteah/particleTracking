@@ -13,6 +13,10 @@ deactivate
 pip install deeptrack
 pip install wandb
 pip install torch torchvision torchaudio
+pip install pytorch_lightning
+
+#optional
+pip install cupy
 
 
 
