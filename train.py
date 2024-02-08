@@ -1,103 +1,85 @@
 import logging
 import wandb
 import torch
+import torch.optim as optim
 
-from torch import optim
 from torch.utils.data import DataLoader, random_split
-from pathlib import Path
 from datetime import datetime
-from tqdm import tqdm
-from models import *
 from ParticleDataset import ParticleDataset
 from properties import *
+from tqdm import tqdm
 
-dir_img = Path('./data/imgs/')
-dir_mask = Path('./data/masks/')
-dir_checkpoint = Path('./checkpoints/')
 
-def train_model(
-        model,
-        loss_function,
-        device,
-        epochs,
-        batch_size,
-        learning_rate,
-        val_percent,
-        num_samples,
-        image_size,
-        particle_range,
-        noise_value,
-        radius_factor
-):
+# Set up the optimizer, the loss and the learning rate scheduler
+optimizer = optim.Adam(Model.parameters(), lr=Learning_rate)
+criterion = Loss_function
+global_step = 0
 
+
+def train_model():
     # 1. Create dataset
-    dataset = ParticleDataset(num_samples=num_samples, image_size=image_size, particle_range=particle_range, noise_value=noise_value, radius_factor=radius_factor)
+    dataset = ParticleDataset(num_samples=Num_samples, image_size=Image_size, particle_range=Particle_range, noise_value=Noise_value, radius_factor=Radius_factor)
+
 
     # 2. Split into train / validation partitions
-    n_val = int(len(dataset) * val_percent)
+    n_val = int(len(dataset) * Val_percent)
     n_train = len(dataset) - n_val
     train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     # 3. Create data loaders
     train_loader = DataLoader(train_set, 
-                              batch_size=batch_size, 
+                              batch_size=Batch_size, 
                               shuffle=True, 
                               drop_last=True) 
 
-    
+
     val_loader = DataLoader(val_set, 
-                            batch_size=batch_size, 
+                            batch_size=Batch_size, 
                             shuffle=True, 
                             drop_last=True) 
-
 
     # (Initialize logging)
     experiment = wandb.init(project= Model_name, resume='allow', anonymous='must')
     experiment.config.update(
-        dict(model_name = Model_name,
-             microscope = Microscope,
-             epochs=Epochs, 
-             batch_size=Batch_size, 
-             learning_rate=Learning_rate,
-             val_percent=Val_percent, 
-             num_samples=Num_samples,
-             image_size = Image_size,
-             particle_range = Particle_range,
-             noise_value = Noise_value,
-             radius_factor = Radius_factor
-             )
+        dict(   model_name = Model_name,
+                microscope = Microscope,
+                epochs=Epochs, 
+                batch_size=Batch_size, 
+                learning_rate=Learning_rate,
+                val_percent=Val_percent, 
+                num_samples=Num_samples,
+                image_size = Image_size,
+                particle_range = Particle_range,
+                noise_value = Noise_value,
+                radius_factor = Radius_factor
+                )
     )
 
-    # 4. Set up the optimizer, the loss and the learning rate scheduler
-    optimizer = optim.Adam(model.parameters(),
-                              lr=learning_rate)
-    criterion = loss_function
+    
+    # 4. Begin training
     global_step = 0
-
-
-    # 5. Begin training
     for epoch in range(1, Epochs + 1):
         model.train()
         epoch_loss = 0
-        with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit='img') as pbar:
+        with tqdm(total=n_train, desc=f'Epoch {epoch}/{Epochs}', unit='img') as pbar:
             for image, label in train_loader:
-                
+
                 #send the input to the Device
-                image = image.to(device=device)
-                label = label.to(device=device)
+                image = image.to(device=Device)
+                label = label.to(device=Device)
 
                 # perform a forward pass and calculate the training loss
                 pred = model(image)
                 loss = criterion(pred, label)
 
                 # zero out the gradients, perform the backpropagation step,
-		        # and update the weights
+                # and update the weights
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
                 # add the loss to the total training loss so far and
-		        # calculate the number of correct predictions
+                # calculate the number of correct predictions
                 epoch_loss += loss
 
                 # update the progress bar
@@ -128,8 +110,8 @@ def train_model(
                                 histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
                         for image, label in val_loader:
-                            image = image.to(device=device)
-                            label = label.to(device=device)
+                            image = image.to(device=Device)
+                            label = label.to(device=Device)
                             with torch.no_grad():
                                 pred = model(image)
                                 loss = criterion(pred, label)
@@ -157,40 +139,23 @@ def train_model(
                         except:
                             pass
 
+
+
+
+
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     logging.info(f'Using Device {Device}')
 
-    
     model = Model
     model = model.to(memory_format=torch.channels_last)
-
-    #uncomment when using UNet
-    if Model_name == "UNet":
-        logging.info(f'Network:\n'
-                        f'\t{model.n_channels} input channels\n'
-                        f'\t{model.n_classes} output channels (classes)\n'
-                        f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
-
     model.to(device=Device)
     
-    train_model(
-        model,
-        loss_function = Loss_function,
-        device = Device,
-        epochs = Epochs,
-        batch_size = Batch_size,
-        learning_rate = Learning_rate,
-        val_percent = Val_percent,
-        num_samples = Num_samples,
-        image_size = Image_size,
-        particle_range = Particle_range,
-        noise_value= Noise_value,
-        radius_factor = Radius_factor
-    )
+    train_model()
 
     # get current date and time
     now = datetime.now()
     now = now.strftime("%Y-%m-%d_%H-%M-%S")
 
-    torch.save(Model, SAVE_PATH + f'/malte{now}.pth')
+    torch.save(model, SAVE_PATH + f'/malte{now}.pth')

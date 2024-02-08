@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 import torchvision.transforms.functional as TF
 import torch.nn.functional as F
+import pytorch_lightning as pl
 
 #available models:
 # UNET_jr
 # UNet
+# UNet_pl
 
 
 #######################################################################################################################
@@ -175,5 +177,29 @@ class UNet(nn.Module):
         return torch.sigmoid(logits)
     
     
+############################################################################################
+# model UNet_pl
+class UNet_pl(pl.LightningModule):
+    def __init__(self, N_channels, N_classes):
+        super(UNet_pl, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(N_channels, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2)
+        )
+        self.decoder = nn.Sequential(
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(64, N_classes, kernel_size=3, padding=1),
+            nn.ReLU(inplace=True),
+            nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)
+        )
 
-    
+    def forward(self, x):
+        x1 = self.encoder(x)
+        x2 = self.decoder(x1)
+        return x2
+
+############################################################################################

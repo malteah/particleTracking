@@ -4,12 +4,11 @@ import torch.nn as nn
 import os
 
 #model
-Bilinear = True         # Use bilinear upsampling
 N_channels  = 1         # n_channels=1 for grayscale images
 N_classes = 1
 
-# Model = models.UNet(N_channels,N_classes,Bilinear)
-# Model_name = "UNet"
+Model = models.UNet_pl(N_channels,N_classes)
+Model_name = "UNet_pl"
 Loss_function = nn.BCELoss(torch.tensor(5).to('cuda:0'))
 
 #run
@@ -31,3 +30,15 @@ Radius_factor = 1
 Load_model = False      # Use an existing model
 SAVE_PATH = os.getcwd() # Path for saving model
 Device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+
+
+
+# Models: 
+# models.UNet(N_channels,N_classes, True), 
+# models.UNet_jr(N_channels,N_classes), 
+# models.UNet_pl(N_channels,N_classes)
+
+# Loss_functions:
+# Loss_function = nn.BCELoss(torch.tensor(5).to('cuda:0'))
