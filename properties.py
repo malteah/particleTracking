@@ -8,9 +8,9 @@ Bilinear = True         # Use bilinear upsampling
 N_channels  = 1         # n_channels=1 for grayscale images
 N_classes = 1
 
-Model = models.UNet(N_channels,N_classes,Bilinear)
-Model_name = "UNet"
-Loss_function = nn.L1Loss
+# Model = models.UNet(N_channels,N_classes,Bilinear)
+# Model_name = "UNet"
+Loss_function = nn.BCELoss(torch.tensor(5).to('cuda:0'))
 
 #run
 Epochs = 20

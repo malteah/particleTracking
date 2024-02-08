@@ -81,12 +81,7 @@ def train_model(
         epoch_loss = 0
         with tqdm(total=n_train, desc=f'Epoch {epoch}/{epochs}', unit='img') as pbar:
             for image, label in train_loader:
-                if Model_name == "UNet":
-                    assert image.shape[1] == model.n_channels, \
-                        f'Network has been defined with {model.n_channels} input channels, ' \
-                        f'but loaded images have {image.shape[1]} channels. Please check that ' \
-                        'the images are loaded correctly.'
-
+                
                 #send the input to the Device
                 image = image.to(device=device)
                 label = label.to(device=device)

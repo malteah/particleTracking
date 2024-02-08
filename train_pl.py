@@ -53,6 +53,12 @@ class UNet(pl.LightningModule):
 model = UNet(N_channels, N_classes)
 model_name = "Unet_pl"
 
+# Set up the optimizer, the loss and the learning rate scheduler
+optimizer = optim.Adam(model.parameters(), lr=Learning_rate)
+criterion = Loss_function
+global_step = 0
+
+
 def train_model():
     # 1. Create dataset
     dataset = ParticleDataset(num_samples=Num_samples, image_size=Image_size, particle_range=Particle_range, noise_value=Noise_value, radius_factor=Radius_factor)
@@ -91,19 +97,10 @@ def train_model():
                 radius_factor = Radius_factor
                 )
     )
-    # # Initialize Lightning Trainer
-    # trainer = pl.Trainer(max_epochs=Epochs, gpus=1)
-    # # Create and train the model
-   
-    # # trainer.fit(model, train_loader, val_loader)
 
-    # 4. Set up the optimizer, the loss and the learning rate scheduler
-    optimizer = optim.Adam(model.parameters(),
-                              lr=Learning_rate)
-    criterion = Loss_function
+    
+    # 4. Begin training
     global_step = 0
-
-    # 5. Begin training
     for epoch in range(1, Epochs + 1):
         model.train()
         epoch_loss = 0
