@@ -39,7 +39,7 @@ def brightfield(IMAGE_SIZE: int = Image_size, PARTICLE_RANGE = Particle_range, N
     s0=optics(particle)                               #Apply the optics to the particle
     sample=s0>>phadd                                  #Randomly change the relative phase of scattered light and reference light
     sample = (sample>>dt.Gaussian(sigma=NOISE_VALUE)) #Add noise to the images
-    sample = (sample >> dt.NormalizeMinMax(0, 1))     #Normalize each image between 0 and 1.
+    sample = (sample >> dt.NormalizeMinMax(0, 1))     #Normalize each feature of the image between 0 and 1.
     im = sample.update()()                            #Refresh the feature to create a new image.
     positions = im.get_property('position', get_one=False)
     radii = im.get_property('radius', get_one=False)
@@ -49,6 +49,7 @@ def brightfield(IMAGE_SIZE: int = Image_size, PARTICLE_RANGE = Particle_range, N
     for i in range(len(radii)):
         x, y = np.meshgrid(np.arange(IMAGE_SIZE), np.arange(IMAGE_SIZE))
         gauss_blob = np.exp(-((x-positions[i][1])**2+(y-positions[i][0])**2)/(2*(radii[i]*1e8 * RADIUS_FACTOR)**2))
+        gauss_blob /= np.max(gauss_blob)
         label += gauss_blob
 
     #types: deeptrack.image.Image, np.ndarray,list
@@ -110,6 +111,7 @@ def fluorescence(IMAGE_SIZE: int = Image_size, PARTICLE_RANGE = Particle_range, 
     for i in range(len(intensity/20)):
         x, y = np.meshgrid(np.arange(IMAGE_SIZE), np.arange(IMAGE_SIZE))
         gauss_blob = np.exp(-((x-positions[i][1])**2+(y-positions[i][0])**2)/(2*(intensity/20[i]*1e8 * RADIUS_FACTOR)**2))
+        gauss_blob /= np.max(gauss_blob)
         label += gauss_blob
 
     #types: deeptrack.image.Image, np.ndarray,list

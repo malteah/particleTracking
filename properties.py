@@ -11,6 +11,11 @@ Model = models.UNet_pl(N_channels,N_classes)
 Model_name = "UNet_pl"
 Loss_function = nn.BCELoss(torch.tensor(5).to('cuda:0'))
 
+# learning rate scheduler
+Patience = 10
+Factor = 0.8
+Min_lr = 0
+
 #run
 Epochs = 20
 Batch_size = 1
